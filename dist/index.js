@@ -3819,13 +3819,14 @@ const markdown_table_1 = __importDefault(__webpack_require__(366));
 const Term_1 = __importDefault(__webpack_require__(733));
 const SizeLimit_1 = __importDefault(__webpack_require__(617));
 const SIZE_LIMIT_HEADING = `## size-limit report 📦 `;
-function fetchPreviousComment(octokit, repo, pr) {
+const heading = (commentKey) => commentKey ? `${SIZE_LIMIT_HEADING}for ${commentKey} ` : SIZE_LIMIT_HEADING;
+function fetchPreviousComment(octokit, repo, pr, commentKey) {
     return __awaiter(this, void 0, void 0, function* () {
         // TODO: replace with octokit.issues.listComments when upgraded to v17
         const commentList = yield octokit.paginate("GET /repos/:owner/:repo/issues/:issue_number/comments", Object.assign(Object.assign({}, repo), { 
             // eslint-disable-next-line camelcase
             issue_number: pr.number }));
-        const sizeLimitComment = commentList.find(comment => comment.body.startsWith(SIZE_LIMIT_HEADING));
+        const sizeLimitComment = commentList.find(comment => comment.body.startsWith(heading(commentKey)));
         return !sizeLimitComment ? null : sizeLimitComment;
     });
 }
@@ -3845,7 +3846,7 @@ function run() {
             const packageManager = core_1.getInput("package_manager");
             const directory = core_1.getInput("directory") || process.cwd();
             const windowsVerbatimArguments = core_1.getInput("windows_verbatim_arguments") === "true" ? true : false;
-            const createCommentForEachRun = core_1.getInput("create_comment_for_each_run") === "true" ? true : false;
+            const commentKey = core_1.getInput("comment_key");
             const octokit = new github_1.GitHub(token);
             const term = new Term_1.default();
             const limit = new SizeLimit_1.default();
@@ -3862,11 +3863,11 @@ function run() {
                 throw error;
             }
             const body = [
-                SIZE_LIMIT_HEADING,
+                heading(commentKey),
                 markdown_table_1.default(limit.formatResults(base, current))
             ].join("\r\n");
-            const sizeLimitComment = yield fetchPreviousComment(octokit, repo, pr);
-            if (!sizeLimitComment || createCommentForEachRun) {
+            const sizeLimitComment = yield fetchPreviousComment(octokit, repo, pr, commentKey);
+            if (!sizeLimitComment) {
                 try {
                     yield octokit.issues.createComment(Object.assign(Object.assign({}, repo), { 
                         // eslint-disable-next-line camelcase
